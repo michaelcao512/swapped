@@ -1,8 +1,10 @@
 package dev.michaelcao512.backend.Services;
 
 import dev.michaelcao512.backend.Entities.GameSession;
+import dev.michaelcao512.backend.Entities.Message;
 import dev.michaelcao512.backend.Entities.Player;
 import dev.michaelcao512.backend.Repositories.GameSessionRepository;
+import dev.michaelcao512.backend.Repositories.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,10 +13,12 @@ import java.util.List;
 @Service
 public class GameService {
     private final GameSessionRepository gameSessionRepository;
+    private final MessageRepository messageRepository;
 
     @Autowired
-    public GameService(GameSessionRepository gameSessionRepository) {
+    public GameService(GameSessionRepository gameSessionRepository, MessageRepository messageRepository) {
         this.gameSessionRepository = gameSessionRepository;
+        this.messageRepository = messageRepository;
     }
 
     public List<Long> getGameSessions() {
@@ -40,4 +44,12 @@ public class GameService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid session ID"));
         return session.getPlayers();
     }
+
+    public Message saveMessage(Message message) {
+        return messageRepository.save(message);
+    }
+    public List<Message> getAllMessages() {
+        return messageRepository.findAll();
+    }
+
 }

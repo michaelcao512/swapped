@@ -1,49 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import MessageInput from "@/components/MessageInput";
+import MessageList from "@/components/MessageList";
+import type { Message } from "@/types/common";
 
-interface Message {
-  id: number;
-  content: string;
-}
+import { Stomp } from '@stomp/stompjs';
+import {json} from "node:stream/consumers";
 
-export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState<string>("");
+export default function ChatApp() {
+    const [client, setClient] = useState<any>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [idMessageCounter, setIdMessageCounter] = useState<number>(0);
 
-  const sendMessage = () => {
-    if (input.trim() !== "") {
-      const newMessage: Message = { id: Date.now(), content: input };
-      setMessages((prev) => [...prev, newMessage]); // Add message to state
-      setInput(""); // Clear input field
-    }
-  };
+    // Establish WebSocket connection
+    const connectWebSocket = () => {
+        const client = Stomp.client('ws://localhost:8080/ws');
+        client.connect({}, () => {
+            const destination = "/topic/messages/1";
+            client.subscribe(destination, (message) => {
+                console.log("received message", message);
+                const newMessage: Message = JSON.parse(message.body);
+                setMessages((prevMessages) => [...prevMessages, newMessage]);
+            });
+        });
+        setClient(client);
+    };
 
-  return (
-      <div style={{ padding: "20px" }}>
-        <h1>Swapped Game - Chat</h1>
-        <div
-            style={{
-              border: "1px solid #ccc",
-              padding: "10px",
-              height: "300px",
-              overflowY: "scroll",
-              marginBottom: "10px",
-            }}
-        >
-          {messages.map((msg) => (
-              <p key={msg.id}>{msg.content}</p>
-          ))}
+   const handleSendMessage = (text: string) => {
+        const newMessage: Message = {
+            id: idMessageCounter,
+            user: { id: 1, name: "you"},
+            timestamp: new Date(),
+            content: text,
+        };
+        const destination = '/app/sendMessage/1';
+        client.send(destination, {}, JSON.stringify(newMessage));
+        setIdMessageCounter(idMessageCounter + 1);
+
+   }
+    useEffect(() => {
+        connectWebSocket();
+        return () => {
+            client && client.disconnect();
+        };
+    }, []);
+
+    useEffect (() => {
+
+    }, [messages]);
+
+
+    return (
+        <div style={{ padding: "20px" }}>
+            <h1>Swapped Game - Chat</h1>
+            <MessageList messages={messages} />
+            <MessageInput onSend={handleSendMessage} />
         </div>
-        <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            style={{ width: "80%", marginRight: "10px" }}
-            placeholder="Type your message here..."
-        />
-        <button onClick={sendMessage}>Send</button>
-      </div>
-  );
+    );
 }
